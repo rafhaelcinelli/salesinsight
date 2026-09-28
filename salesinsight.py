@@ -242,6 +242,27 @@ def mostrar_metricas(metricas):
     for r in metricas["por_regiao"]:
         print(f"{r['regiao']:<13} R$ {r['receita_total']:>11.2f} | ticket medio R$ {r['ticket_medio']:.2f}")
 
+def segmentar_clientes(registros):
+    """Soma o gasto de cada cliente e classifica em Bronze, Prata ou Ouro."""
+    classificar = lambda total: "Ouro" if total > 15000 else "Prata" if total >= 5000 else "Bronze"
+
+    gasto = somar_por(registros, "cliente")
+    clientes = []
+    for nome in gasto:
+        clientes.append({"cliente": nome, "total_gasto": round(gasto[nome], 2),
+                         "segmento": classificar(gasto[nome])})
+    clientes.sort(key=lambda c: c["total_gasto"], reverse=True)
+
+    print("\n=== TOP 10 CLIENTES ===")
+    for c in clientes[:10]:
+        print(f"{c['cliente']}  R$ {c['total_gasto']:.2f}  {c['segmento']}")
+
+    contagem = {"Ouro": 0, "Prata": 0, "Bronze": 0}
+    for c in clientes:
+        contagem[c["segmento"]] += 1
+    print("Clientes por segmento:", contagem)
+    return clientes
+
 
 def main():
     """Executa todas as etapas do projeto em ordem."""
@@ -265,6 +286,8 @@ def main():
 
     metricas = calcular_metricas(registros)
     mostrar_metricas(metricas)
+
+    clientes = segmentar_clientes(registros)
 
 
 if __name__ == "__main__":
