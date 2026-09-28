@@ -263,6 +263,28 @@ def segmentar_clientes(registros):
     print("Clientes por segmento:", contagem)
     return clientes
 
+def exportar_resultados(metricas, clientes, estatisticas):
+    """Salva as metricas e os clientes em CSV, as estatisticas em JSON e le o JSON de volta."""
+    os.makedirs("outputs", exist_ok=True)
+
+    with open("outputs/metricas_por_mes.csv", "w", newline="", encoding="utf-8-sig") as f:
+        escritor = csv.DictWriter(f, fieldnames=metricas["por_mes"][0].keys())
+        escritor.writeheader()
+        escritor.writerows(metricas["por_mes"])
+
+    with open("outputs/segmentacao_clientes.csv", "w", newline="", encoding="utf-8-sig") as f:
+        escritor = csv.DictWriter(f, fieldnames=clientes[0].keys())
+        escritor.writeheader()
+        escritor.writerows(clientes)
+
+    with open("outputs/estatisticas_gerais.json", "w", encoding="utf-8") as f:
+        json.dump(estatisticas, f, indent=4, ensure_ascii=False)
+
+    with open("outputs/estatisticas_gerais.json", "r", encoding="utf-8") as f:
+        conferencia = json.load(f)
+    print("\n=== JSON LIDO DE VOLTA ===")
+    print(conferencia)
+
 
 def main():
     """Executa todas as etapas do projeto em ordem."""
@@ -286,8 +308,27 @@ def main():
 
     metricas = calcular_metricas(registros)
     mostrar_metricas(metricas)
-
     clientes = segmentar_clientes(registros)
+
+    # estatisticas gerais
+    receitas = [linha["receita_total"] for linha in registros]
+    media = sum(receitas) / len(receitas)
+    acima_da_media = 0
+    for r in receitas:
+        if r > media:
+            acima_da_media += 1
+
+    estatisticas = {"registros_iniciais": relatorio["iniciais"],
+                    "registros_validos": relatorio["finais"],
+                    "receita_total": round(sum(receitas), 2),
+                    "ticket_medio": round(media, 2),
+                    "vendas_acima_da_media": acima_da_media,
+                    "total_clientes": len(clientes)}
+    print("\n=== ESTATISTICAS GERAIS ===")
+    print(estatisticas)
+
+    exportar_resultados(metricas, clientes, estatisticas)
+    print("\n[CONCLUIDO] Fluxo finalizado com sucesso.")
 
 
 if __name__ == "__main__":
