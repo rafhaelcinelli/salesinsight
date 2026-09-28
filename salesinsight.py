@@ -132,6 +132,35 @@ def limpar_dados(registros):
     print("Nomes de cliente corrigidos:", relatorio["clientes_corrigidos"])
     return limpos, relatorio
 
+# ---------- RF04 - colunas novas ----------
+def criar_colunas_derivadas(registros):
+    """Cria receita_total, mes, mes_nome, trimestre, ano e faixa_receita_item."""
+    for linha in registros:
+        data = linha["data_venda"]
+        receita = linha["quantidade"] * linha["preco_unitario"]
+        linha["receita_total"] = round(receita, 2)
+        linha["mes"] = data.month
+        linha["mes_nome"] = MESES[data.month]
+        linha["ano"] = data.year
+
+        if data.month <= 3:
+            linha["trimestre"] = "Q1"
+        elif data.month <= 6:
+            linha["trimestre"] = "Q2"
+        elif data.month <= 9:
+            linha["trimestre"] = "Q3"
+        else:
+            linha["trimestre"] = "Q4"
+
+        if receita < 500:
+            linha["faixa_receita_item"] = "Baixo Valor"
+        elif receita < 5000:
+            linha["faixa_receita_item"] = "Medio Valor"
+        else:
+            linha["faixa_receita_item"] = "Alto Valor"
+    return registros
+
+
 def main():
     """Executa todas as etapas do projeto em ordem."""
     print("=" * 50)
@@ -145,6 +174,8 @@ def main():
     inspecionar_dados(registros)
 
     registros, relatorio = limpar_dados(registros)
+    registros = criar_colunas_derivadas(registros)
+    
 
 if __name__ == "__main__":
     main()
