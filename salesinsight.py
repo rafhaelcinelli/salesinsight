@@ -160,6 +160,88 @@ def criar_colunas_derivadas(registros):
             linha["faixa_receita_item"] = "Alto Valor"
     return registros
 
+# ---------- RF07 - funcao que recebe outra funcao ----------
+def processar_coluna(registros, coluna, funcao, nome_saida):
+    """Aplica a funcao recebida em uma coluna e guarda o resultado em nome_saida."""
+    for linha in registros:
+        linha[nome_saida] = funcao(linha[coluna])
+    return registros
+
+
+# ---------- RF05 - metricas ----------
+def somar_por(registros, coluna):
+    """Soma a receita agrupando pelos valores de uma coluna."""
+    totais = {}
+    for linha in registros:
+        chave = linha[coluna]
+        totais[chave] = totais.get(chave, 0) + linha["receita_total"]
+    return totais
+
+
+def calcular_metricas(registros):
+    """Calcula as metricas por mes, trimestre, produto, categoria e regiao."""
+    metricas = {}
+
+    # por mes: receita, quantidade e numero de vendas
+    por_mes = {}
+    for linha in registros:
+        mes = linha["mes"]
+        if mes not in por_mes:
+            por_mes[mes] = {"mes": mes, "mes_nome": MESES[mes], "receita_total": 0,
+                            "quantidade": 0, "n_vendas": 0}
+        por_mes[mes]["receita_total"] += linha["receita_total"]
+        por_mes[mes]["quantidade"] += linha["quantidade"]
+        por_mes[mes]["n_vendas"] += 1
+    lista_mes = []
+    for mes in sorted(por_mes):
+        por_mes[mes]["receita_total"] = round(por_mes[mes]["receita_total"], 2)
+        lista_mes.append(por_mes[mes])
+    metricas["por_mes"] = lista_mes
+
+    metricas["por_trimestre"] = somar_por(registros, "trimestre")
+
+    # top 5 produtos (ordena do maior para o menor usando lambda)
+    produtos = somar_por(registros, "produto")
+    metricas["top_produtos"] = sorted(produtos.items(), key=lambda item: item[1], reverse=True)[:5]
+
+    metricas["por_categoria"] = somar_por(registros, "categoria")
+
+    # regiao: receita e ticket medio (receita / numero de vendas)
+    receita_regiao = somar_por(registros, "regiao")
+    vendas_regiao = {}
+    for linha in registros:
+        vendas_regiao[linha["regiao"]] = vendas_regiao.get(linha["regiao"], 0) + 1
+    por_regiao = []
+    for regiao in receita_regiao:
+        ticket = receita_regiao[regiao] / vendas_regiao[regiao]
+        por_regiao.append({"regiao": regiao, "receita_total": round(receita_regiao[regiao], 2),
+                           "ticket_medio": round(ticket, 2)})
+    metricas["por_regiao"] = por_regiao
+    return metricas
+
+
+def mostrar_metricas(metricas):
+    """Imprime as metricas no console."""
+    print("\n=== RECEITA POR MES ===")
+    for m in metricas["por_mes"]:
+        print(f"{m['mes_nome']:<10} R$ {m['receita_total']:>11.2f} | qtd {m['quantidade']:>3} | vendas {m['n_vendas']}")
+
+    print("\n=== RECEITA POR TRIMESTRE ===")
+    for tri in sorted(metricas["por_trimestre"]):
+        print(f"{tri}  R$ {metricas['por_trimestre'][tri]:.2f}")
+
+    print("\n=== TOP 5 PRODUTOS ===")
+    for produto, receita in metricas["top_produtos"]:
+        print(f"{produto:<11} R$ {receita:.2f}")
+
+    print("\n=== RECEITA POR CATEGORIA ===")
+    for categoria, receita in metricas["por_categoria"].items():
+        print(f"{categoria:<13} R$ {receita:.2f}")
+
+    print("\n=== RECEITA E TICKET MEDIO POR REGIAO ===")
+    for r in metricas["por_regiao"]:
+        print(f"{r['regiao']:<13} R$ {r['receita_total']:>11.2f} | ticket medio R$ {r['ticket_medio']:.2f}")
+
 
 def main():
     """Executa todas as etapas do projeto em ordem."""
@@ -169,13 +251,21 @@ def main():
 
     if not os.path.exists("vendas.csv"):
         gerar_dataset_vendas("vendas.csv")
-        
+
     registros = carregar_dataset("vendas.csv")
     inspecionar_dados(registros)
 
-    registros, relatorio = limpar_dados(registros)
+    registros, relatorio = limpar_dados(registros)       # limpeza vem antes de tudo
     registros = criar_colunas_derivadas(registros)
-    
+
+    # funcao que recebe outra funcao, usando lambda
+    registros = processar_coluna(registros, "quantidade",
+                                 lambda q: "Alto Volume" if q > 5 else "Baixo Volume",
+                                 "perfil_volume")
+
+    metricas = calcular_metricas(registros)
+    mostrar_metricas(metricas)
+
 
 if __name__ == "__main__":
     main()
