@@ -58,6 +58,80 @@ def gerar_dataset_vendas(caminho_csv="vendas.csv", n_registros=200, seed=42):
                                "preco_unitario": preco})
     print(f"Dataset gerado com {n_registros} registros.")
 
+def carregar_dataset(caminho_csv):
+    """Le o arquivo CSV e devolve uma lista de dicionarios."""
+    with open(caminho_csv, "r", encoding="utf-8") as arquivo:
+        registros = list(csv.DictReader(arquivo))
+    return registros
+
+
+def inspecionar_dados(registros):
+    """Mostra quantos registros tem, as colunas, os vazios e as 5 primeiras linhas."""
+    colunas = list(registros[0].keys())
+
+    vazios = {}
+    for coluna in colunas:
+        vazios[coluna] = 0
+    for linha in registros:
+        for coluna in colunas:
+            if linha[coluna].strip() == "":
+                vazios[coluna] = vazios[coluna] + 1
+
+    print("\n=== INSPECAO DOS DADOS ===")
+    print("Total de registros:", len(registros))
+    print("Colunas:", colunas)
+    print("Valores vazios:", vazios)
+    print("Primeiros registros:")
+    for linha in registros[:5]:
+        print(linha)
+
+def limpar_dados(registros):
+    """Remove registros com erro e padroniza os textos. Devolve a lista limpa e o relatorio."""
+    relatorio = {"iniciais": len(registros), "removidos_data": 0, "removidos_vazios": 0,
+                 "clientes_corrigidos": 0, "finais": 0}
+    padrao_cliente = re.compile(r"^Cliente_\d{3}$")
+    limpos = []
+
+    for linha in registros:
+        # tira espacos extras
+        for chave in linha:
+            linha[chave] = linha[chave].strip()
+
+        # data: se nao converter, descarta
+        try:
+            linha["data_venda"] = datetime.strptime(linha["data_venda"], "%Y-%m-%d")
+        except ValueError:
+            relatorio["removidos_data"] += 1
+            continue
+
+        # quantidade ou preco vazio: descarta
+        if linha["quantidade"] == "" or linha["preco_unitario"] == "":
+            relatorio["removidos_vazios"] += 1
+            continue
+
+        # converte os numeros
+        linha["quantidade"] = int(linha["quantidade"])
+        linha["preco_unitario"] = float(linha["preco_unitario"])
+
+        # cliente: marca se estava fora do padrao e corrige para Cliente_NNN
+        linha["cliente_fora_do_padrao"] = padrao_cliente.match(linha["cliente"]) is None
+        if linha["cliente_fora_do_padrao"]:
+            relatorio["clientes_corrigidos"] += 1
+        nome = re.sub(r"[^A-Za-z0-9_]", "", linha["cliente"])   # tira simbolos
+        numero = re.search(r"\d+", nome).group()                # pega so o numero
+        linha["cliente"] = "Cliente_" + numero.zfill(3)
+
+        limpos.append(linha)
+
+    relatorio["finais"] = len(limpos)
+    print("\n=== RELATORIO DE LIMPEZA ===")
+    print("Registros iniciais:", relatorio["iniciais"])
+    print("Removidos por data invalida:", relatorio["removidos_data"])
+    print("Removidos por valor vazio:", relatorio["removidos_vazios"])
+    print("Registros finais:", relatorio["finais"])
+    print("Nomes de cliente corrigidos:", relatorio["clientes_corrigidos"])
+    return limpos, relatorio
+
 def main():
     """Executa todas as etapas do projeto em ordem."""
     print("=" * 50)
@@ -66,7 +140,11 @@ def main():
 
     if not os.path.exists("vendas.csv"):
         gerar_dataset_vendas("vendas.csv")
+        
+    registros = carregar_dataset("vendas.csv")
+    inspecionar_dados(registros)
 
+    registros, relatorio = limpar_dados(registros)
 
 if __name__ == "__main__":
     main()
