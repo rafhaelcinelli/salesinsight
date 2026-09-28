@@ -79,13 +79,11 @@ salesinsight/
 ├── salesinsight.py
 ├── vendas.csv
 ├── README.md
-├── outputs/
-│   ├── metricas_por_mes.csv
-│   ├── segmentacao_clientes.csv
-│   └── estatisticas_gerais.json
-└── planejamento/
-    └── tarefas-kanban.md
+└── outputs/
+    ├── metricas_por_mes.csv
+    ├── segmentacao_clientes.csv
+    └── estatisticas_gerais.json
 ```
 
 ## Vídeo de demonstração
-[inserir aqui o link do vídeo]
+https://drive.google.com/file/d/1QtGA5ryMZEm29_xN3StAwAYfKWX5HglP/view?usp=drive_link
